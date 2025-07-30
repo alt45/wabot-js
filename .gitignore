@@ -1,0 +1,27 @@
+# Dependencies
+/node_modules
+
+# Environment variables
+.env
+
+# PM2 process file
+# ecosystem.config.js (or .cjs) is usually committed, but if it contains sensitive info, you might ignore it.
+# For now, assuming it's committed.
+
+# Baileys authentication info
+/auth_info
+
+# Log files
+/logs
+
+# Saved media
+/savedimg
+/data
+
+# npm package manager files
+npm-debug.log*
+.npm
+
+# OS generated files
+.DS_Store
+Thumbs.db
