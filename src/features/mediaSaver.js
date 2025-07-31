@@ -20,6 +20,7 @@ Object.values(MEDIA_DIRS).forEach(dir => {
 
 export async function saveMedia(sock, msg) {
   const messageType = getContentType(msg.message);
+  const senderJid = msg.key.participant || msg.key.remoteJid;
   let mediaType, stream;
   let filename = '';
 
@@ -27,23 +28,23 @@ export async function saveMedia(sock, msg) {
     case 'imageMessage':
       mediaType = 'image';
       stream = await downloadContentFromMessage(msg.message.imageMessage, 'image');
-      filename = path.join(MEDIA_DIRS.image, `${new Date().getTime()}.jpeg`);
+      filename = path.join(MEDIA_DIRS.image, `${senderJid}_${new Date().getTime()}.jpeg`);
       break;
     case 'videoMessage':
       mediaType = 'video';
       stream = await downloadContentFromMessage(msg.message.videoMessage, 'video');
-      filename = path.join(MEDIA_DIRS.video, `${new Date().getTime()}.mp4`);
+      filename = path.join(MEDIA_DIRS.video, `${senderJid}_${new Date().getTime()}.mp4`);
       break;
     case 'audioMessage':
       mediaType = 'audio';
       stream = await downloadContentFromMessage(msg.message.audioMessage, 'audio');
-      filename = path.join(MEDIA_DIRS.audio, `${new Date().getTime()}.ogg`); // Atau .mp3, .opus
+      filename = path.join(MEDIA_DIRS.audio, `${senderJid}_${new Date().getTime()}.ogg`); // Atau .mp3, .opus
       break;
     case 'documentMessage':
       mediaType = 'document';
       stream = await downloadContentFromMessage(msg.message.documentMessage, 'document');
       const originalFilename = msg.message.documentMessage.fileName || `${new Date().getTime()}`;
-      filename = path.join(MEDIA_DIRS.document, originalFilename);
+      filename = path.join(MEDIA_DIRS.document, `${senderJid}_${originalFilename}`);
       break;
     default:
       return false; // Bukan tipe media yang didukung untuk disimpan
