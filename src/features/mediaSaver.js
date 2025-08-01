@@ -6,7 +6,7 @@ import logger from '../core/logger.js';
 const BASE_DATA_DIR = './data';
 const MEDIA_DIRS = {
   image: path.join(BASE_DATA_DIR, 'img'),
-  video: path.join(BASE_DATA_DIR, 'video'), // Tambahkan direktori video jika diperlukan
+  video: path.join(BASE_DATA_DIR, 'video'),
   audio: path.join(BASE_DATA_DIR, 'voice'),
   document: path.join(BASE_DATA_DIR, 'doc'),
 };
@@ -19,50 +19,82 @@ Object.values(MEDIA_DIRS).forEach(dir => {
 });
 
 export async function saveMedia(sock, msg) {
-  const messageType = getContentType(msg.message);
   const senderJid = msg.key.participant || msg.key.remoteJid;
-  let mediaType, stream;
-  let filename = '';
-
-  switch (messageType) {
-    case 'imageMessage':
-      mediaType = 'image';
-      stream = await downloadContentFromMessage(msg.message.imageMessage, 'image');
-      filename = path.join(MEDIA_DIRS.image, `${senderJid}_${new Date().getTime()}.jpeg`);
-      break;
-    case 'videoMessage':
-      mediaType = 'video';
-      stream = await downloadContentFromMessage(msg.message.videoMessage, 'video');
-      filename = path.join(MEDIA_DIRS.video, `${senderJid}_${new Date().getTime()}.mp4`);
-      break;
-    case 'audioMessage':
-      mediaType = 'audio';
-      stream = await downloadContentFromMessage(msg.message.audioMessage, 'audio');
-      filename = path.join(MEDIA_DIRS.audio, `${senderJid}_${new Date().getTime()}.ogg`); // Atau .mp3, .opus
-      break;
-    case 'documentMessage':
-      mediaType = 'document';
-      stream = await downloadContentFromMessage(msg.message.documentMessage, 'document');
-      const originalFilename = msg.message.documentMessage.fileName || `${new Date().getTime()}`;
-      filename = path.join(MEDIA_DIRS.document, `${senderJid}_${originalFilename}`);
-      break;
-    default:
-      return false; // Bukan tipe media yang didukung untuk disimpan
-  }
-
-  let buffer = Buffer.from([]);
-  for await (const chunk of stream) {
-    buffer = Buffer.concat([buffer, chunk]);
-  }
-
   try {
+    const messageType = getContentType(msg.message);
+
+    // Fungsi bantuan untuk menghasilkan nama file yang konsisten
+    const generateFilename = (extension) => {
+      const jidNumber = senderJid.split('@')[0];
+      const pushName = msg.pushName ? msg.pushName.replace(/[/\\?%*:|"<>]/g, '-') : 'Unknown';
+      const timestamp = new Date().getTime();
+      return `${pushName}_${jidNumber}_${timestamp}${extension}`;
+    };
+
+    let mediaMessage, mediaType, stream;
+    let filename = '';
+
+    switch (messageType) {
+      case 'imageMessage':
+        mediaMessage = msg.message.imageMessage;
+        if (!mediaMessage?.mediaKey) {
+          logger.warn('Skipping image download due to empty mediaKey.');
+          return false;
+        }
+        mediaType = 'image';
+        stream = await downloadContentFromMessage(mediaMessage, 'image');
+        filename = path.join(MEDIA_DIRS.image, generateFilename('.jpeg'));
+        break;
+      case 'videoMessage':
+        mediaMessage = msg.message.videoMessage;
+        if (!mediaMessage?.mediaKey) {
+          logger.warn('Skipping video download due to empty mediaKey.');
+          return false;
+        }
+        mediaType = 'video';
+        stream = await downloadContentFromMessage(mediaMessage, 'video');
+        filename = path.join(MEDIA_DIRS.video, generateFilename('.mp4'));
+        break;
+      case 'audioMessage':
+        mediaMessage = msg.message.audioMessage;
+        if (!mediaMessage?.mediaKey) {
+          logger.warn('Skipping audio download due to empty mediaKey.');
+          return false;
+        }
+        mediaType = 'audio';
+        stream = await downloadContentFromMessage(mediaMessage, 'audio');
+        filename = path.join(MEDIA_DIRS.audio, generateFilename('.ogg'));
+        break;
+      case 'documentMessage':
+        mediaMessage = msg.message.documentMessage;
+        if (!mediaMessage?.mediaKey) {
+          logger.warn('Skipping document download due to empty mediaKey.');
+          return false;
+        }
+        mediaType = 'document';
+        stream = await downloadContentFromMessage(mediaMessage, 'document');
+        const originalFilename = mediaMessage.fileName || '';
+        const extension = path.extname(originalFilename);
+        filename = path.join(MEDIA_DIRS.document, generateFilename(extension));
+        break;
+      default:
+        return false; // Bukan tipe media yang didukung untuk disimpan
+    }
+
+    let buffer = Buffer.from([]);
+    for await (const chunk of stream) {
+      buffer = Buffer.concat([buffer, chunk]);
+    }
+
     fs.writeFileSync(filename, buffer);
     logger.info(`Media (${mediaType}) berhasil disimpan ke: ${filename}`);
-    // Opsional: Kirim konfirmasi ke pengirim
-    // await sock.sendMessage(msg.key.remoteJid, { text: `Media Anda telah disimpan di ${mediaType}.` });
     return true;
+
   } catch (error) {
-    logger.error(`Gagal menyimpan media (${mediaType}) ke ${filename}: ${error.message}`);
-    return false;
+    logger.error(`Gagal mengunduh atau menyimpan media dari ${senderJid}: ${error.message}`);
+    if (error.message.includes('ETIMEDOUT')) {
+      logger.warn('Kesalahan timeout koneksi terdeteksi. Mengabaikan media.');
+    }
+    return false; // Mencegah crash
   }
 }
