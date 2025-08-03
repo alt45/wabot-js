@@ -12,13 +12,14 @@ const responseRules = JSON.parse(fs.readFileSync(path.join('./data/actionrespons
  */
 export async function handleAutoResponse(sock, msg) {
   const remoteJid = msg.key.remoteJid;
-
+  logger.debug(`{Proses auto respon} "${JSON.stringify(msg, null, 2)}" `);
   // Abaikan jika tidak ada pesan, pesan dari diri sendiri, grup, atau channel
   if (!msg.message || msg.key.fromMe || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@newsletter')) {
     return;
   }
 
   const messageText = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').toLowerCase();
+  logger.debug(`{Proses auto respon} "${messageText}" `);
   if (!messageText) {
     return;
   }
@@ -53,6 +54,9 @@ export async function handleAutoResponse(sock, msg) {
       
       // Hentikan pengecekan aturan lain setelah menemukan yang cocok
       break; 
+    }
+    else {
+      logger.debug(`No match for "${messageText}" with rule: ${rule.keywords.join(', ')}`);
     }
   }
 }

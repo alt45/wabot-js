@@ -15,12 +15,12 @@ async function main() {
     // Listener untuk pesan masuk
     sock.ev.on('messages.upsert', async (m) => {
       const msg = m.messages[0];
-      logger.debug(`Pesan masuk diterima (RAW): ${JSON.stringify(msg, null, 2)}`);
+      logger.debug(`Pesan masuk diterima (RAW): ${JSON.stringify(msg, null, 2)}`); // Mengubah level log menjadi info
       if (!msg.message) return;
 
       // 1. Simpan media jika ada
       const isMediaSaved = await saveMedia(sock, msg);
-      if (isMediaSaved) return; // Jika media disimpan, hentikan proses lebih lanjut
+      //if (isMediaSaved) return; // Jika media disimpan, hentikan proses lebih lanjut
 
       // 2. Jalankan auto-responder untuk pesan pribadi
       await handleAutoResponse(sock, msg);

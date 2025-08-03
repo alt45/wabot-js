@@ -19,6 +19,12 @@ Object.values(MEDIA_DIRS).forEach(dir => {
 });
 
 export async function saveMedia(sock, msg) {
+  // Jangan proses pesan yang dikirim oleh bot itu sendiri
+  if (msg.key.fromMe) {
+    logger.debug('Melewatkan penyimpanan media karena pesan berasal dari bot sendiri.');
+    return false;
+  }
+
   const senderJid = msg.key.participant || msg.key.remoteJid;
   try {
     const messageType = getContentType(msg.message);

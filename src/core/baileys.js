@@ -11,7 +11,18 @@ async function connectToWhatsApp() {
 
   const sock = makeWASocket({
     auth: state,
-    logger: pino({ level: 'silent' }),
+    browser: ['Safari', 'MacOS', '10.15.7'],
+    logger: pino({
+      level: 'silent',
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'SYS:yyyy-mm-dd HH:MM:ss',
+          ignore: 'pid,hostname',
+        },
+      },
+    }),
     markOnlineOnConnect: false,
   });
 
