@@ -1,0 +1,14 @@
+[   
+    
+    {
+        "keywords": ["arahangin"],
+        "urlapi": "https://dataweb.bmkg.go.id/cuaca/angin/streamline-d10.jpg "
+        
+    },{
+        "keywords": ["awan"],
+        "urlapi": "https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_EH_Jateng.png "
+    },{
+        "keywords": ["uapair"],
+        "urlapi": "https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_WE_Region2.png "
+    }
+]

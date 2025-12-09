@@ -6,7 +6,7 @@ import fs from 'fs';
 import fsp from 'fs/promises';
 
 // Muat data URL BMKG sekali saat modul dimuat
-const bmkgUrlData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'bmkgurl.json')));
+const bmkgUrlData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src', 'bmkgurl.json')));
 
 /**
  * Mengambil gambar dari URL yang ditentukan di bmkgurl.json berdasarkan kata kunci.

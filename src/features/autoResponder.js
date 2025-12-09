@@ -3,7 +3,7 @@ import path from 'path';
 import logger from '../core/logger.js';
 import { handleActions } from './actionHandler.js'; // Impor handler aksi
 
-const responseRules = JSON.parse(fs.readFileSync(path.join('./data/actionresponse.json')));
+const responseRules = JSON.parse(fs.readFileSync(path.join('./src/actionresponse.json')));
 
 /**
  * Handles automatic responses based on keywords in private messages.

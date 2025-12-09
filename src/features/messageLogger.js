@@ -27,7 +27,13 @@ function getMessageContent(message) {
 
 export function logMessage(msg) {
   try {
-    const from = jidNormalizedUser(msg.key.remoteJid);
+    if (msg.key.fromMe) {
+      return;
+    }
+    let from = jidNormalizedUser(msg.key.remoteJid);
+    if (from === 'status@broadcast' && msg.participant) {
+      from = `status@${jidNormalizedUser(msg.participant)}`;
+    }
     const type = getContentType(msg.message);
     const content = getMessageContent(msg.message);
     const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss');

@@ -1,4 +1,8 @@
 import logger from '../core/logger.js';
+import fs from 'fs';
+import path from 'path';
+
+const callResponses = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src', 'callHandler.json')));
 
 // Peta untuk melacak status terakhir dari setiap panggilan berdasarkan ID-nya
 const callState = new Map();
@@ -24,7 +28,7 @@ export async function handleCallEvent(sock, calls) {
     if (previousStatus === 'ringing' && currentStatus === 'terminate') {
       logger.info(`Panggilan dari ${from} tidak terjawab (offer -> terminated). Mengirim pesan balasan.`);
       try {
-        const replyText = 'Halo, maaf panggilan Anda tidak terjawab. Silakan tinggalkan pesan teks jika ada yang penting. Terima kasih!';
+        const replyText = callResponses.unanswered;
         await sock.sendMessage(from, { text: replyText });
         logger.info(`Berhasil mengirim balasan panggilan tak terjawab ke ${from}`);
       } catch (error) {
@@ -35,7 +39,7 @@ export async function handleCallEvent(sock, calls) {
     if (previousStatus === 'reject' && currentStatus === 'terminate') {
       logger.info(`Panggilan dari ${from} tidak terjawab (offer -> terminated). Mengirim pesan balasan.`);
       try {
-        const replyText = 'Halo, maaf panggilan Tidak menerima Panggilan. Silakan tinggalkan pesan teks jika ada yang penting. Terima kasih!';
+        const replyText = callResponses.rejected;
         await sock.sendMessage(from, { text: replyText });
         logger.info(`Berhasil mengirim balasan panggilan tak terjawab ke ${from}`);
       } catch (error) {

@@ -1,0 +1,34 @@
+[   
+    
+    {
+        "keywords": ["Assllmuallaikum"],
+        "response": "Waalaikumsalam! ",
+        "matchType": "includes",
+		"actions": []
+    },{
+        "keywords": ["cuaca"],
+        "response": "",
+        "matchType": "includes",
+		"actions": ["fetchWeather"]
+    },{
+        "keywords": ["bmkg"],
+        "response": "",
+        "matchType": "includes",
+        "actions": ["fetchBmkgImage"]
+    },{
+        "keywords": ["gempa"],
+        "response": "",
+        "matchType": "includes",
+        "actions": ["fetchGempa"]
+    },{
+        "keywords": ["panas banget"],
+        "response": "Cuaca panas hari ini, jangan lupa minum air yang cukup!",
+        "matchType": "includes",
+        "actions": []
+    },{
+        "keywords": ["cctv"],
+        "response": "CCTV sedang berfungsi dengan baik.",
+        "matchType": "matches",
+        "actions": ["captureCCTV"]
+    }
+]
