@@ -63,29 +63,144 @@
 }</code></pre>
     </div>
 
+    <h2>API Test Form</h2>
+    <div class="endpoint">
+        <form id="api-test-form">
+            <div>
+                <label for="api-key">API Key:</label><br>
+                <input type="text" id="api-key" name="api-key" required style="width: 100%;">
+            </div>
+            <br>
+            <div>
+                <label>Recipient Type:</label><br>
+                <input type="radio" id="recipient-number" name="recipient-type" value="number" checked>
+                <label for="recipient-number">Number</label>
+                <input type="radio" id="recipient-group" name="recipient-type" value="groupId">
+                <label for="recipient-group">Group ID</label>
+            </div>
+            <br>
+            <div>
+                <label for="recipient-id">Recipient ID:</label><br>
+                <input type="text" id="recipient-id" name="recipient-id" required placeholder="e.g., 6281234567890 or 123...@g.us" style="width: 100%;">
+            </div>
+            <br>
+            <div>
+                <label for="message-type">Message Type:</label><br>
+                <select id="message-type" name="message-type" style="width: 100%;">
+                    <option value="text">Text</option>
+                    <option value="image">Image</option>
+                    <option value="document">Document</option>
+                </select>
+            </div>
+            <br>
+            <div id="payload-fields">
+                <!-- Fields will be dynamically inserted here -->
+            </div>
+            <button type="submit">Send Message</button>
+        </form>
+        <br>
+        <h4>API Response:</h4>
+        <pre id="api-response"><code>Waiting for request...</code></pre>
+    </div>
+
     <h2>Example Usage with <code>curl</code></h2>
-
-    <h3>Send Text Message</h3>
-    <pre><code>curl -X POST http://localhost:3000/send \
-  -H "Content-Type: application/json" \
-  -H "X-API-KEY: your-secret-api-key" \
-  -d '{
-        "number": "6281234567890",
-        "type": "text",
-        "payload": { "message": "Hello from API!" }
-      }'</code></pre>
-
-    <h3>Send Image Message to Group</h3>
-    <pre><code>curl -X POST http://localhost:3000/send \
-  -H "Content-Type: application/json" \
-  -H "X-API-KEY: your-secret-api-key" \
-  -d '{
-        "groupId": "120363041234567890@g.us",
-        "type": "image",
-        "payload": {
-          "url": "https://example.com/image.jpg",
-          "caption": "This is an image"
-        }
-      }'</code></pre>
+    <!-- ... existing curl examples ... -->
 </body>
+<script>
+    const form = document.getElementById('api-test-form');
+    const messageTypeSelector = document.getElementById('message-type');
+    const payloadFieldsContainer = document.getElementById('payload-fields');
+    const apiResponseContainer = document.getElementById('api-response');
+
+    const payloadTemplates = {
+        text: `
+            <div>
+                <label for="payload-message">Message:</label><br>
+                <textarea id="payload-message" required style="width: 100%; min-height: 80px;"></textarea>
+            </div>
+        `,
+        image: `
+            <div>
+                <label for="payload-url">Image URL:</label><br>
+                <input type="text" id="payload-url" required style="width: 100%;">
+            </div>
+            <br>
+            <div>
+                <label for="payload-caption">Caption (optional):</label><br>
+                <input type="text" id="payload-caption" style="width: 100%;">
+            </div>
+        `,
+        document: `
+            <div>
+                <label for="payload-url">Document URL:</label><br>
+                <input type="text" id="payload-url" required style="width: 100%;">
+            </div>
+            <br>
+            <div>
+                <label for="payload-fileName">File Name:</label><br>
+                <input type="text" id="payload-fileName" required style="width: 100%;">
+            </div>
+            <br>
+            <div>
+                <label for="payload-mimetype">MIME Type (optional):</label><br>
+                <input type="text" id="payload-mimetype" placeholder="e.g., application/pdf" style="width: 100%;">
+            </div>
+        `
+    };
+
+    function updatePayloadFields() {
+        const messageType = messageTypeSelector.value;
+        payloadFieldsContainer.innerHTML = payloadTemplates[messageType];
+    }
+
+    messageTypeSelector.addEventListener('change', updatePayloadFields);
+    // Initial call
+    updatePayloadFields();
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        apiResponseContainer.textContent = 'Sending...';
+
+        const apiKey = document.getElementById('api-key').value;
+        const recipientType = document.querySelector('input[name="recipient-type"]:checked').value;
+        const recipientId = document.getElementById('recipient-id').value;
+        const messageType = messageTypeSelector.value;
+
+        const body = {
+            type: messageType,
+            payload: {}
+        };
+
+        body[recipientType] = recipientId;
+
+        if (messageType === 'text') {
+            body.payload.message = document.getElementById('payload-message').value;
+        } else if (messageType === 'image') {
+            body.payload.url = document.getElementById('payload-url').value;
+            body.payload.caption = document.getElementById('payload-caption').value;
+        } else if (messageType === 'document') {
+            body.payload.url = document.getElementById('payload-url').value;
+            body.payload.fileName = document.getElementById('payload-fileName').value;
+            const mimetype = document.getElementById('payload-mimetype').value;
+            if(mimetype) body.payload.mimetype = mimetype;
+        }
+        
+        try {
+            const response = await fetch('/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                },
+                body: JSON.stringify(body, null, 2)
+            });
+            const result = await response.json();
+            apiResponseContainer.textContent = JSON.stringify(result, null, 2);
+
+        } catch (error) {
+            apiResponseContainer.textContent = `Error: ${error.message}`;
+        }
+    });
+</script>
 </html>

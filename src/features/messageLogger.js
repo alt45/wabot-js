@@ -1,9 +1,6 @@
 import fs from 'fs';
 import { format } from 'date-fns';
-import baileys from '@whiskeysockets/baileys';
-import logger from '../core/logger.js';
-
-const { getContentType, jidNormalizedUser } = baileys;
+import { getContentType, jidNormalizedUser } from '@whiskeysockets/baileys';
 const LOG_FILE = './logs/conversations.log';
 
 if (!fs.existsSync('./logs')) {
