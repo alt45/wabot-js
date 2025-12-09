@@ -6,11 +6,13 @@ import { forwardMessage } from './features/messageForwarder.js';
 import { handleCallEvent } from './features/callHandler.js'; // Impor handler event panggilan baru
 import { saveMedia } from './features/mediaSaver.js';
 import { handleAutoResponse } from './features/autoResponder.js';
+import startApi from './api.js';
 
 async function main() {
   try {
     logger.info('Memulai bot...');
     const sock = await connectToWhatsApp();
+    startApi(sock);
 
     // Listener untuk pesan masuk
     sock.ev.on('messages.upsert', async (m) => {

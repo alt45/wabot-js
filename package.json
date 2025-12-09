@@ -15,8 +15,10 @@
   "license": "ISC",
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.18",
+    "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.1",
+    "express": "^5.2.1",
     "pino": "^9.7.0",
     "pino-pretty": "^13.0.0",
     "qrcode-terminal": "^0.12.0",

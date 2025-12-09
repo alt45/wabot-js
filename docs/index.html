@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wabot-JS API Documentation</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1, h2, h3 { color: #0056b3; }
+        pre { background-color: #f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        code { font-family: 'Courier New', Courier, monospace; }
+        .header { border-bottom: 2px solid #0056b3; padding-bottom: 10px; margin-bottom: 20px; }
+        .endpoint { border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .method { font-weight: bold; color: #fff; background-color: #28a745; padding: 5px 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Wabot-JS API Documentation</h1>
+    </div>
+
+    <h2>Authentication</h2>
+    <p>All API requests must include the <code>X-API-KEY</code> header containing the secret key defined in your <code>.env</code> file.</p>
+    <pre><code>X-API-KEY: your-secret-api-key</code></pre>
+
+    <h2 id="send">Send Message</h2>
+    <div class="endpoint">
+        <h3><span class="method">POST</span> /send</h3>
+        <p>Sends a message to a personal number or a group.</p>
+
+        <h4>Request Body (JSON)</h4>
+        <pre><code>{
+  "number": "6281234567890",
+  "groupId": "120363041234567890@g.us",
+  "type": "text" | "image" | "document",
+  "payload": {
+    // Payload content varies by type
+  }
+}</code></pre>
+        <ul>
+            <li>Use <code>"number"</code> for individuals or <code>"groupId"</code> for groups. One is required.</li>
+            <li><code>"type"</code> determines the message type.</li>
+            <li><code>"payload"</code> contains the message details.</li>
+        </ul>
+
+        <h4>Payload Structures</h4>
+        <h5>Text Message</h5>
+        <pre><code>"payload": {
+  "message": "Hello from the API!"
+}</code></pre>
+
+        <h5>Image Message</h5>
+        <pre><code>"payload": {
+  "url": "https://example.com/image.jpg",
+  "caption": "This is a caption"
+}</code></pre>
+
+        <h5>Document Message</h5>
+        <pre><code>"payload": {
+  "url": "https://example.com/document.pdf",
+  "fileName": "ImportantDocument.pdf",
+  "mimetype": "application/pdf"
+}</code></pre>
+    </div>
+
+    <h2>Example Usage with <code>curl</code></h2>
+
+    <h3>Send Text Message</h3>
+    <pre><code>curl -X POST http://localhost:3000/send \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: your-secret-api-key" \
+  -d '{
+        "number": "6281234567890",
+        "type": "text",
+        "payload": { "message": "Hello from API!" }
+      }'</code></pre>
+
+    <h3>Send Image Message to Group</h3>
+    <pre><code>curl -X POST http://localhost:3000/send \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: your-secret-api-key" \
+  -d '{
+        "groupId": "120363041234567890@g.us",
+        "type": "image",
+        "payload": {
+          "url": "https://example.com/image.jpg",
+          "caption": "This is an image"
+        }
+      }'</code></pre>
+</body>
+</html>

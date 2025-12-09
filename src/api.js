@@ -1,0 +1,87 @@
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import path from 'path';
+
+dotenv.config();
+
+const app = express();
+const port = process.env.API_PORT || 3000;
+const apiKey = process.env.API_KEY;
+
+// Serve static documentation
+app.use(express.static(path.join(process.cwd(), 'docs')));
+
+// Middleware for API Key Authentication for /send endpoint
+const apiKeyAuth = (req, res, next) => {
+  if (req.path.startsWith('/send')) {
+    const providedApiKey = req.headers['x-api-key'];
+    if (!providedApiKey || providedApiKey !== apiKey) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+  next();
+};
+
+app.use(cors());
+app.use(express.json());
+app.use(apiKeyAuth);
+
+
+const startApi = (sock) => {
+    // API route
+  app.post('/send', async (req, res) => {
+    const { number, groupId, type, payload } = req.body;
+
+    if (!number && !groupId) {
+      return res.status(400).json({ error: 'Either "number" or "groupId" must be provided.' });
+    }
+
+    const jid = number ? `${number}@s.whatsapp.net` : groupId;
+
+    try {
+      switch (type) {
+        case 'text':
+          if (!payload.message) {
+            return res.status(400).json({ error: 'Payload for text must contain a "message".' });
+          }
+          await sock.sendMessage(jid, { text: payload.message });
+          break;
+        case 'image':
+          if (!payload.url) {
+            return res.status(400).json({ error: 'Payload for image must contain a "url".' });
+          }
+          await sock.sendMessage(jid, { image: { url: payload.url }, caption: payload.caption });
+          break;
+        case 'document':
+            if (!payload.url || !payload.fileName) {
+                return res.status(400).json({ error: 'Payload for document must contain a "url" and "fileName".' });
+            }
+            await sock.sendMessage(jid, {
+                document: { url: payload.url },
+                fileName: payload.fileName,
+                mimetype: payload.mimetype
+            });
+            break;
+        default:
+          return res.status(400).json({ error: 'Invalid message type.' });
+      }
+      res.status(200).json({ success: true, message: 'Message sent successfully.' });
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      res.status(500).json({ success: false, error: 'Failed to send message.' });
+    }
+  });
+
+  // Documentation route
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'docs', 'index.html'));
+  });
+
+  app.listen(port, () => {
+    console.log(`WhatsApp API server listening on port ${port}`);
+    console.log(`API documentation available at http://localhost:${port}`);
+  });
+};
+
+export default startApi;

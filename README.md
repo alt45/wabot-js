@@ -45,10 +45,16 @@ Pastikan Anda telah menginstal yang berikut ini di sistem Anda:
     LOG_LEVEL=info
     SOURCE_GROUP_ID=1234567890@g.us # Ganti dengan ID grup sumber Anda
     TARGET_GROUP_ID=0987654321@g.us # Ganti dengan ID grup target Anda
+
+    # Konfigurasi API
+    API_PORT=3000
+    API_KEY=kunci-rahasia-anda
     ```
-    *   `LOG_LEVEL`: Atur ke `info` untuk log normal, atau `debug` untuk log yang lebih detail (berguna untuk debugging).
-    *   `SOURCE_GROUP_ID`: JID (ID WhatsApp) dari grup tempat bot akan mendengarkan pesan untuk diteruskan.
-    *   `TARGET_GROUP_ID`: JID (ID WhatsApp) dari grup tempat bot akan meneruskan pesan.
+    *   `LOG_LEVEL`: Atur ke `info` untuk log normal, atau `debug` untuk log yang lebih detail.
+    *   `SOURCE_GROUP_ID`: JID dari grup sumber untuk penerusan pesan.
+    *   `TARGET_GROUP_ID`: JID dari grup target untuk penerusan pesan.
+    *   `API_PORT`: Port tempat server API akan berjalan.
+    *   `API_KEY`: Kunci rahasia untuk otentikasi permintaan API.
 
 2.  **Konfigurasi PM2 (`ecosystem.config.cjs`)**:
     Pastikan file `ecosystem.config.cjs` Anda sudah ada dan dikonfigurasi dengan benar. Contoh sederhana:
@@ -71,6 +77,80 @@ Pastikan Anda telah menginstal yang berikut ini di sistem Anda:
     };
     ```
     *Catatan: File ini sudah diubah ekstensinya menjadi `.cjs` untuk kompatibilitas dengan PM2 dan ES Modules.*
+
+## Layanan API
+
+Bot ini juga menyediakan layanan API untuk mengirim pesan WhatsApp melalui permintaan HTTP.
+
+### Otentikasi
+
+Semua permintaan ke endpoint API harus menyertakan header `X-API-KEY` yang berisi kunci rahasia yang telah Anda atur di file `.env`.
+
+### Endpoint
+
+*   **`POST /send`**
+
+    Mengirim pesan ke nomor pribadi atau grup.
+
+    **Struktur Body Permintaan (JSON):**
+    ```json
+    {
+      "number": "6281234567890",
+      "groupId": "120363041234567890@g.us",
+      "type": "text" | "image" | "document",
+      "payload": {
+        // ... isi payload sesuai tipe
+      }
+    }
+    ```
+    -   Gunakan `"number"` untuk perorangan atau `"groupId"` untuk grup. Salah satu harus diisi.
+    -   `type` menentukan jenis pesan.
+    -   `payload` berisi detail pesan.
+
+### Contoh Penggunaan `curl`
+
+*   **Mengirim Pesan Teks:**
+    ```bash
+    curl -X POST http://localhost:3000/send \
+      -H "Content-Type: application/json" \
+      -H "X-API-KEY: kunci-rahasia-anda" \
+      -d '{
+            "number": "6281234567890",
+            "type": "text",
+            "payload": { "message": "Halo dari API!" }
+          }'
+    ```
+
+*   **Mengirim Gambar:**
+    ```bash
+    curl -X POST http://localhost:3000/send \
+      -H "Content-Type: application/json" \
+      -H "X-API-KEY: kunci-rahasia-anda" \
+      -d '{
+            "groupId": "120363041234567890@g.us",
+            "type": "image",
+            "payload": {
+              "url": "https://example.com/image.jpg",
+              "caption": "Ini adalah gambar"
+            }
+          }'
+    ```
+
+*   **Mengirim Dokumen:**
+    ```bash
+    curl -X POST http://localhost:3000/send \
+      -H "Content-Type: application/json" \
+      -H "X-API-KEY: kunci-rahasia-anda" \
+      -d '{
+            "number": "6281234567890",
+            "type": "document",
+            "payload": {
+              "url": "https://example.com/file.pdf",
+              "fileName": "DokumenPenting.pdf",
+              "mimetype": "application/pdf"
+            }
+          }'
+    ```
 
 ## Penggunaan
 
