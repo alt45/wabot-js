@@ -1,8 +1,6 @@
-import baileys from '@whiskeysockets/baileys';
+import { getContentType, jidNormalizedUser } from '@whiskeysockets/baileys';
 import config from '../core/config.js';
 import logger from '../core/logger.js';
-
-const { getContentType, jidNormalizedUser } = baileys;
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function forwardMessage(sock, msg) {

@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs/promises';
 
 dotenv.config();
 
@@ -70,6 +71,43 @@ const startApi = (sock) => {
     } catch (error) {
       console.error('Failed to send message:', error);
       res.status(500).json({ success: false, error: 'Failed to send message.' });
+    }
+  });
+
+  // New API route to browse the data folder
+  app.get('/api/data', async (req, res) => {
+    // API Key Authentication
+    const providedApiKey = req.headers['x-api-key'];
+    if (!providedApiKey || providedApiKey !== apiKey) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const baseDir = path.resolve(process.cwd(), 'data');
+    const userPath = req.query.path || '';
+
+    const targetPath = path.join(baseDir, userPath);
+
+    // Security check: Resolve the path and ensure it's within the base 'data' directory.
+    // This prevents path traversal attacks (e.g., /api/data?path=../)
+    if (!path.resolve(targetPath).startsWith(baseDir)) {
+      return res.status(403).json({ error: 'Forbidden: Access denied.' });
+    }
+
+    try {
+      const dirEntries = await fs.readdir(targetPath, { withFileTypes: true });
+
+      const contents = dirEntries.map(entry => ({
+        name: entry.name,
+        type: entry.isDirectory() ? 'directory' : 'file',
+      }));
+
+      res.status(200).json(contents);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return res.status(404).json({ error: 'Not Found: The specified path does not exist.' });
+      }
+      console.error('Failed to read directory:', error);
+      res.status(500).json({ error: 'Internal Server Error: Failed to read directory.' });
     }
   });
 
