@@ -111,6 +111,50 @@ const startApi = (sock) => {
     }
   });
 
+  // New API route to get a specific file from the data folder
+  app.get('/api/data/file', async (req, res) => {
+    // API Key Authentication
+    const providedApiKey = req.headers['x-api-key'];
+    if (!providedApiKey || providedApiKey !== apiKey) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const baseDir = path.resolve(process.cwd(), 'data');
+    const userPath = req.query.path; // path is required
+
+    if (!userPath) {
+      return res.status(400).json({ error: 'Bad Request: The "path" query parameter is required.' });
+    }
+
+    const targetPath = path.join(baseDir, userPath);
+
+    // Security check: Ensure the resolved path is within the base 'data' directory.
+    if (!path.resolve(targetPath).startsWith(baseDir)) {
+      return res.status(403).json({ error: 'Forbidden: Access denied.' });
+    }
+
+    try {
+      // Check if the path exists and is a file
+      const stats = await fs.stat(targetPath);
+      if (!stats.isFile()) {
+        return res.status(403).json({ error: 'Forbidden: The requested path is not a file.' });
+      }
+
+      // Let Express handle sending the file.
+      // It sets the appropriate Content-Type header and streams the file.
+      res.sendFile(targetPath);
+
+    } catch (error) {
+      // Handle cases where the file doesn't exist
+      if (error.code === 'ENOENT') {
+        return res.status(404).json({ error: 'Not Found: The specified file does not exist.' });
+      }
+      // Handle other potential errors
+      console.error('Failed to access or send file:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
   // Documentation route
   app.get('/', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'docs', 'index.html'));

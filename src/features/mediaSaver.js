@@ -32,9 +32,16 @@ export async function saveMedia(sock, msg) {
     // Fungsi bantuan untuk menghasilkan nama file yang konsisten
     const generateFilename = (extension) => {
       const jidNumber = senderJid.split('@')[0];
-      const pushName = msg.pushName ? msg.pushName.replace(/[/\\?%*:|"<>]/g, '-') : 'Unknown';
+      // Sanitize pushName: convert to lowercase, replace spaces with hyphens,
+      // and remove any character that is not alphanumeric or hyphen.
+      const sanitizedPushName = msg.pushName
+        ? msg.pushName
+            .toLowerCase() // Convert to lowercase
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .replace(/[^a-z0-9-]/g, '') // Remove non-alphanumeric, non-hyphen characters
+        : 'unknown';
       const timestamp = new Date().getTime();
-      return `${pushName}_${jidNumber}_${timestamp}${extension}`;
+      return `${sanitizedPushName}_${jidNumber}_${timestamp}${extension}`;
     };
 
     let mediaMessage, mediaType, stream;
