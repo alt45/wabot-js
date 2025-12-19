@@ -76,8 +76,8 @@ const startApi = (sock) => {
 
   // New API route to browse the data folder
   app.get('/api/data', async (req, res) => {
-    // API Key Authentication
-    const providedApiKey = req.headers['x-api-key'];
+    // API Key Authentication from header or query param
+    const providedApiKey = req.headers['x-api-key'] || req.query['api-key'];
     if (!providedApiKey || providedApiKey !== apiKey) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -113,8 +113,8 @@ const startApi = (sock) => {
 
   // New API route to get a specific file from the data folder
   app.get('/api/data/file', async (req, res) => {
-    // API Key Authentication
-    const providedApiKey = req.headers['x-api-key'];
+    // API Key Authentication from header or query param
+    const providedApiKey = req.headers['x-api-key'] || req.query['api-key'];
     if (!providedApiKey || providedApiKey !== apiKey) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
