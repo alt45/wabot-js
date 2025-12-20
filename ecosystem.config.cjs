@@ -3,6 +3,7 @@ module.exports = {
     {
       name: 'wabot-js',
       script: './src/app.js',
+      cron_restart: "0 */2 * * *",
       instances: 1,
       autorestart: true,
       watch: false,
