@@ -1,0 +1,22 @@
+{
+  "name": "wa-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp Bot - Baileys + SQLite",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.16",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "pino": "^9.3.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
