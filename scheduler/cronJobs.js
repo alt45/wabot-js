@@ -1,5 +1,5 @@
 const cron = require('node-cron')
-const db   = require('../database/db')
+const { db }   = require('../database/db')
 
 function initScheduler(sock) {
   // Cek tiap menit

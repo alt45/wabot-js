@@ -1,4 +1,4 @@
-const db = require('../database/db')
+const { db } = require('../database/db')
 
 function addReminder(jid, sender, args) {
   if (args.length < 2) return '⚠️ Format: *!remind 30m Makan siang*'

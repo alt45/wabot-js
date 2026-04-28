@@ -17,14 +17,13 @@ const initialData = {
   chats: []
 }
 
-// Inisialisasi file jika belum ada
-if (!fs.existsSync(DB_PATH)) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2))
-}
-
 class JsonDB {
-  constructor() {
-    this.path = DB_PATH
+  constructor(filePath = DB_PATH) {
+    this.path = filePath
+    // Inisialisasi file jika belum ada
+    if (!fs.existsSync(this.path)) {
+      fs.writeFileSync(this.path, JSON.stringify(initialData, null, 2))
+    }
   }
 
   // Baca semua data
@@ -116,4 +115,7 @@ class JsonDB {
 const db = new JsonDB()
 console.log('✅ JSON Database siap:', DB_PATH)
 
-module.exports = db
+module.exports = {
+  db,
+  JsonDB
+}

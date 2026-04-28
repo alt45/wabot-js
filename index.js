@@ -4,7 +4,8 @@ const {
   default: makeWASocket,
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  downloadMediaMessage
 } = require('@whiskeysockets/baileys')
 
 const { Boom }   = require('@hapi/boom')
@@ -14,7 +15,9 @@ const path       = require('path')
 const fs         = require('fs')
 
 const config     = require('./config')
-const db         = require('./database/db')
+const { db, JsonDB } = require('./database/db')
+const groupLogDB     = new JsonDB(path.join(__dirname, 'data', 'group_messages.json'))
+const groupNameCache = new Map()
 
 const { checkRateLimit }   = require('./middleware/rateLimit')
 const { isBlacklisted }    = require('./middleware/blacklist')
@@ -104,6 +107,21 @@ async function startBot() {
 
       if (!jid) continue
 
+      // ── Debug: Print Group Name ────────────────────────
+      if (config.DEBUG && isGroup) {
+        let groupName = groupNameCache.get(jid)
+        if (!groupName) {
+          try {
+            const metadata = await sock.groupMetadata(jid)
+            groupName = metadata.subject
+            groupNameCache.set(jid, groupName)
+          } catch (e) {
+            groupName = 'Unknown Group'
+          }
+        }
+        console.log(`[DEBUG] Chat aktif di Grup: ${groupName} (${jid})`)
+      }
+
       // ── Status WA (stories) → forward ke grup target
       if (jid === 'status@broadcast') {
         await handleStatus(sock, msg)
@@ -117,9 +135,54 @@ async function startBot() {
         msg.message?.imageMessage?.caption ||
         msg.message?.videoMessage?.caption || ''
 
-      // Simpan ke history chat
-      if (body) {
-        db.table('chats').insert({ jid, message: body, direction: 'in', sender })
+      // Simpan ke history chat grup jika terdaftar di config
+      if (isGroup && config.TARGET_GROUP_ID.includes(jid)) {
+        // Ambil nama grup
+        let groupName = groupNameCache.get(jid)
+        if (!groupName) {
+          try {
+            const metadata = await sock.groupMetadata(jid)
+            groupName = metadata.subject
+            groupNameCache.set(jid, groupName)
+          } catch (e) {
+            groupName = 'Unknown Group'
+          }
+        }
+
+        // Simpan Teks/Caption
+        if (body) {
+          groupLogDB.table('chats').insert({ jid, groupName, message: body, sender, timestamp: new Date().toISOString() })
+        }
+
+        // Tangani Gambar
+        const msgType = Object.keys(msg.message || {})[0]
+        if (msgType === 'imageMessage') {
+          try {
+            const buffer = await downloadMediaMessage(msg, 'buffer', {})
+            const safeGroupName = groupName.replace(/[\\/:*?"<>|]/g, '_')
+            const mediaDir = path.join(__dirname, 'data', 'media', safeGroupName)
+            
+            if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true })
+            
+            const fileName = `${Date.now()}.jpg`
+            const filePath = path.join(mediaDir, fileName)
+            
+            fs.writeFileSync(filePath, buffer)
+            
+            groupLogDB.table('chats').insert({ 
+              jid, 
+              groupName, 
+              message: `[Image: ${fileName}]`, 
+              sender, 
+              mediaPath: filePath,
+              timestamp: new Date().toISOString() 
+            })
+            
+            if (config.DEBUG) console.log(`[DEBUG] Gambar grup ${groupName} disimpan: ${filePath}`)
+          } catch (err) {
+            console.error(`[Error] Gagal simpan gambar grup ${groupName}:`, err.message)
+          }
+        }
       }
 
       if (!body.startsWith(config.PREFIX)) continue

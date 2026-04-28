@@ -1,5 +1,5 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys')
-const db     = require('../database/db')
+const { db }     = require('../database/db')
 const config = require('../config')
 
 const logStatus = db.prepare(`

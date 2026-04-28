@@ -1,4 +1,4 @@
-const db = require('../database/db')
+const { db } = require('../database/db')
 
 function addNote(jid, sender, args) {
   const text = args.join(' ')

@@ -1,4 +1,4 @@
-const db = require('../database/db')
+const { db } = require('../database/db')
 
 // Gunakan in-memory saja untuk rate limit agar cepat
 const limits = new Map()

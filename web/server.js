@@ -2,7 +2,7 @@ const http   = require('http')
 const fs     = require('fs')
 const path   = require('path')
 const config = require('../config')
-const db     = require('../database/db')
+const { db }     = require('../database/db')
 
 const QR_PATH = path.join(__dirname, '..', 'session', 'qr.png')
 const SESSION_DIR = path.join(__dirname, '..', 'session')
