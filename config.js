@@ -10,5 +10,7 @@ module.exports = {
   OWNER_NUMBER:    process.env.OWNER_NUMBER   || '', // Contoh: 628123456789
   ADMIN_PASSWORD:  process.env.ADMIN_PASSWORD || 'admin123',
   API_TOKEN:       process.env.API_TOKEN      || 'my-secret-token-123',
+  YAGAMI_USERNAME: process.env.YAGAMI_USERNAME || '',
+  YAGAMI_TOKEN:    process.env.YAGAMI_TOKEN    || '',
   DEBUG:           process.env.DEBUG === 'true',
 }

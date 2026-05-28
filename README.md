@@ -1,95 +1,102 @@
-# 🤖 WA-Bot Personal Assistant
+# 🤖 WA-Bot Personal Assistant & Transaction Hub
 
-Bot WhatsApp berbasis **Baileys** dan **JSON Database** yang dirancang untuk kebutuhan personal, hobi, dan otomasi. Dilengkapi dengan Dashboard Admin modern untuk pengelolaan sistem.
+Bot WhatsApp tangguh berbasis **Baileys** dan **JSON Database** yang dirancang untuk kebutuhan personal, utilitas kerja, otomasi absensi, dan transaksi pulsa/paket data. Dilengkapi dengan **Web Admin Dashboard** yang memiliki konsol interaktif modern layaknya WhatsApp Web.
+
+---
 
 ## 🚀 Fitur Utama
-- **Self-Bot Mode**: Bot merespon pesan dari nomor sendiri.
-- **Admin Dashboard**: UI modern untuk monitoring RAM, Uptime, dan Logs.
-- **Data Manager**: Kelola Catatan (Notes) dan Pengingat (Reminders) via Web.
-- **API Access**: Kirim dan ambil pesan menggunakan Bearer Token.
-- **Status Forwarder**: Otomatis meneruskan Status/Story WA ke grup target.
-- **Utilities**: Cek Cuaca, Cek Kuota XL/Axis, dan fitur pengingat waktu.
+
+*   **Self-Bot Mode**: Bot merespon perintah baik dari nomor sendiri (Owner) maupun chat publik secara aman.
+*   **Yagami Cell Integration**: Dukungan penuh transaksi pengisian pulsa, kuota data, token listrik, dan cek tagihan dengan asinkron background polling status otomatis langsung dari obrolan WhatsApp.
+*   **PLN Portal Shifting Absensi Parser**: Mengambil data laporan absensi shifting ULP secara langsung (scraping) dari Portal PLN ES Amanda secara dinamis.
+*   **Premium Interactive Reply Console**: Dashboard Admin web modern dengan fitur *Chat History* interaktif bergaya WhatsApp, mempermudah pemantauan obrolan masuk dan membalas pesan langsung dari browser.
+*   **Status WA Story Forwarder**: Otomatis meneruskan postingan Status/Story WhatsApp (baik teks, gambar, maupun video) ke grup target yang ditentukan.
+*   **Utilities System**: Pengecekan kuota Sidompul XL/Axis secara terperinci (disertai visual progress bar), serta info cuaca real-time (OpenWeatherMap).
+*   **Clean & Lightweight Architecture**: Menggunakan JSON database lokal murni tanpa ketergantungan SQL Server eksternal atau C++ compiler, sehingga sangat ringan dan portabel.
 
 ---
 
-## 🛠️ Instalasi
+## 🛠️ Persyaratan & Instalasi
 
-1. **Persyaratan**: Node.js v18+ (Disarankan v20 LTS).
-2. **Clone & Install**:
-   ```bash
-   npm install
-   ```
-3. **Konfigurasi**:
-   Salin `.env.example` ke `.env` dan isi variabel berikut:
-   - `OWNER_NUMBER`: Nomor Anda (contoh: 628123456789).
-   - `ADMIN_PASSWORD`: Password login dashboard.
-   - `API_TOKEN`: Token untuk akses API eksternal.
-   - `WEATHER_API_KEY`: API Key dari OpenWeatherMap.
+### 1. Persyaratan Sistem
+*   **Node.js**: v18+ (Disarankan v20 LTS).
+*   **PM2** (Opsional, untuk pengelolaan proses latar belakang).
 
-4. **Jalankan Bot**:
-   ```bash
-   npm start
-   ```
+### 2. Langkah Instalasi
+1.  Unduh/clone repositori ini ke sistem Anda.
+2.  Pasang seluruh dependensi proyek:
+    ```bash
+    npm install
+    ```
+3.  Salin `.env.example` ke berkas baru `.env` dan konfigurasikan variabel lingkungan Anda.
 
 ---
 
-## 📱 Command WhatsApp (Prefix: `!`)
+## ⚙️ Konfigurasi Variabel Lingkungan (.env)
 
-### 🌤️ Utilities
-- `!menu` / `!help` : Menampilkan daftar menu perintah aktif.
-- `!erp <username>` : Tarik data laporan absensi shifting ULP PLN ES secara dinamis berdasarkan tanggal berjalan (contoh: `!erp ULP.TEMANGGUNG`).
-- `!cuaca <kota>` : Info cuaca saat ini (contoh: `!cuaca Semarang`).
-- `!xl <nomor>` : Cek kuota XL / Axis (contoh: `!xl 08xxxxxxxxx`).
+Berikut adalah variabel-variabel wajib yang harus Anda konfigurasikan di dalam berkas `.env`:
 
-### 🚀 System (Owner Only)
-- `!status` : Cek uptime dan penggunaan RAM.
-- `!eval <code>` : Menjalankan kode JavaScript langsung.
-- `!selfkill` : Logout dan hapus sesi secara permanen.
+```env
+# ─── WhatsApp Bot Config ───────────────────────────────
+BOT_PREFIX=!
+OWNER_NUMBER=628xxxxxxxxxx
+TARGET_GROUP_ID=120363xxxxxx@g.us
 
----
+# ─── Dashboard & API Security ──────────────────────────
+WEB_PORT=3000
+ADMIN_PASSWORD=admin123
+API_TOKEN=my-secret-token-123
 
-## 🌐 Dashboard Admin
-Akses dashboard melalui browser di: `http://localhost:3000`
-- **Username**: (Kosongkan)
-- **Password**: Sesuai `ADMIN_PASSWORD` di .env
+# ─── Yagami Cell API ────────────────────────────────────
+YAGAMI_USERNAME=username_reseller_yagami
+YAGAMI_TOKEN=token_api_yagami
 
-**Fitur Dashboard:**
-- Grafik statistik sistem.
-- Riwayat log aktifitas real-time.
-- Tabel manajemen data (Hapus Notes/Reminders).
-- QR Code viewer (jika koneksi terputus).
-
----
-
-## 🔑 Dokumentasi API (Bearer Token)
-
-Semua endpoint API memerlukan header:
-`Authorization: Bearer <YOUR_API_TOKEN>`
-
-### 1. Kirim Pesan
-- **Endpoint**: `POST /api/send`
-- **Body**:
-  ```json
-  {
-    "number": "628xxxxxx",
-    "message": "Halo dari API!"
-  }
-  ```
-
-### 2. Ambil Riwayat Chat
-- **Endpoint**: `GET /api/chat?jid=628xxxx@s.whatsapp.net`
-
-### 3. Cek Statistik
-- **Endpoint**: `GET /api/stats`
+# ─── Integrasi API Eksternal ───────────────────────────
+WEATHER_API_KEY=your_openweathermap_api_key
+DEFAULT_CITY=Semarang
+DEBUG=true
+```
 
 ---
 
-## 🗄️ Database
-Bot ini menggunakan **JSON Database** (Pure JavaScript) yang disimpan di `data/db.json`. Tidak memerlukan SQL server atau compiler C++, sehingga sangat ringan dan portabel.
+## 📱 Daftar Command WhatsApp (Prefix: `!`)
 
-## ⚠️ Keamanan
-- Jangan bagikan folder `session/` atau file `.env` kepada siapapun.
-- Fitur `!eval` sangat kuat, gunakan hanya untuk kebutuhan debugging Anda sendiri.
+### ⚡ Transaksi (Yagami Cell)
+*   `!yagami` : Menampilkan menu utama dan panduan transaksi Yagami Cell.
+*   `!yagami saldo` : Memeriksa sisa saldo aktif pada akun Yagami Cell Anda (otomatis menyinkronkan data lokal).
+*   `!yagami listproduk [filter]` : Mencari produk reseller dan melihat ID-nya (contoh: `!yagami listproduk axis 5k`).
+*   `!yagami order [id_produk] [nohp] [pembayaran]` : Memesan produk dengan pilihan metode pembayaran (contoh: `!yagami order 71 083812345678 bank_bca`). Default pembayaran: `balance` (saldo). Bot akan merespons instan dan melakukan background polling otomatis hingga transaksi sukses/gagal.
+*   `!yagami cek [idtrx]` : Melacak status detail suatu transaksi secara manual kapan saja.
+
+### 🌤️ Utilitas & Kerja
+*   `!erp [username_ulp]` : Menarik laporan absensi shifting ULP secara langsung dari Portal PLN ES Amanda berdasarkan tanggal berjalan (contoh: `!erp ULP.TEMANGGUNG`).
+*   `!xl [nomor]` : Memeriksa detail sisa kuota dan masa aktif kartu XL / Axis melalui integrasi Sidompul API secara visual.
+*   `!cuaca [kota]` : Memeriksa info cuaca terkini (contoh: `!cuaca Semarang`).
+*   `!menu` / `!help` : Menampilkan daftar menu bantuan bot.
+
+### 🚀 Sistem (Khusus Owner / Nomor Sendiri)
+*   `!status` : Menampilkan uptime bot dan penggunaan RAM saat ini.
+*   `!eval [javascript_code]` : Mengeksekusi skrip JavaScript secara langsung untuk keperluan debugging.
+*   `!selfkill` : Menghentikan jalannya proses bot, melakukan logout sesi, dan menghapus kredensial sesi secara permanen.
 
 ---
-_Dibuat untuk keperluan Hobi & Personal_ 🚀
+
+## 🌐 Dashboard Admin Web
+
+Akses dashboard web melalui browser di alamat: `http://localhost:3000` (atau port sesuai konfigurasi Anda).
+
+*   **Username**: (Biarkan kosong)
+*   **Password**: Isi sesuai dengan `ADMIN_PASSWORD` pada `.env`.
+
+### **Fitur Dashboard:**
+1.  **Status Live Panel**: Grafik penggunaan memori/RAM dan uptime proses bot.
+2.  **WhatsApp Chat Room Console**: Membaca riwayat pesan masuk dan keluar lengkap dengan antarmuka dinamis, serta membalas pesan langsung ke WhatsApp melalui dashboard.
+3.  **Real-time Process Logs**: Konsol logger warna-warni untuk memantau aktivitas proses sistem bot secara instan.
+4.  **QR Code Viewer**: Menampilkan kode QR secara real-time jika bot terputus dari WhatsApp.
+
+---
+
+## 🗄️ Database & Keamanan
+
+*   **Penyimpanan Lokal**: Bot ini menggunakan basis data JSON JavaScript murni di dalam `data/db.json` untuk mencatat riwayat obrolan masuk/keluar secara instan.
+*   **Keamanan Ekstra**: Jangan pernah membagikan berkas `.env` atau folder `session/` kepada pihak asing karena berisi token otentikasi WhatsApp dan API transaksi Yagami Cell Anda.

@@ -31,6 +31,7 @@ const { cekKuotaXL }     = require('./handlers/xlKuota')
 const { handleStatus }   = require('./handlers/statusForwarder')
 const { getHelp }        = require('./handlers/help')
 const { getErpReport }   = require('./handlers/erpAmanda')
+const { handleYagamiCommand } = require('./handlers/yagami')
 const log                = require('./logger/debugLogger')
 
 const SESSION_DIR = path.join(__dirname, 'session')
@@ -316,6 +317,12 @@ async function startBot() {
             break
           }
 
+          // ── Yagami Cell
+          case 'yagami': {
+            await handleYagamiCommand(sock, jid, msg, args)
+            break
+          }
+
           // ── Help
           case 'help':
           case 'menu': {
@@ -347,6 +354,26 @@ async function reply(sock, jid, msg, text) {
       quotedMessage: msg.message
     }
   })
+
+  // Simpan respon otomatis bot ke database agar riwayat room obrolan utuh
+  try {
+    let groupName = ''
+    const isGroup = jid.endsWith('@g.us')
+    if (isGroup) {
+      groupName = groupNameCache.get(jid) || 'Group'
+    }
+    db.table('chats').insert({
+      jid,
+      groupName,
+      sender: 'Me',
+      senderName: 'Bot',
+      message: text,
+      direction: 'out',
+      timestamp: new Date().toISOString()
+    })
+  } catch (e) {
+    log.error('reply_log', 'Gagal menyimpan log respon bot:', e)
+  }
 }
 
 startBot().catch(err => log.error('bot', 'Gagal menjalankan startBot:', err))
