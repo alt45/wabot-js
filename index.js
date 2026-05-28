@@ -199,7 +199,7 @@ async function startBot() {
       // Parse command
       const args    = body.slice(config.PREFIX.length).trim().split(/\s+/)
       const command = args.shift().toLowerCase()
-      const isOwner = sender.startsWith(config.OWNER_NUMBER) || isMe
+      const isOwner = (config.OWNER_NUMBER && sender.startsWith(config.OWNER_NUMBER)) || isMe
 
       // Log aktivitas
       logActivity(jid, sender, command, body)
