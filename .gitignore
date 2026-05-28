@@ -4,5 +4,26 @@ session1/
 session2/
 data/
 .env
+
+# Log files
 *.log
+npm-debug.log*
+/logs
+
+# Temporary update
 TMP_UPDATE/
+/TMP_UPDATE
+
+# Baileys authentication info
+/auth_info
+
+# Saved media
+/savedimg
+
+# npm package manager files
+.npm
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
