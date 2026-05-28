@@ -11,6 +11,7 @@ function getHelp() {
   ${p}cuaca <kota> → info cuaca
   ${p}xl <nomor> → cek kuota XL/Axis
   ${p}yagami → menu transaksi Yagami Cell
+  ${p}zt [pln/lokal/all] → cek host aktif ZeroTier (default: pln)
   ${p}menu / ${p}help → daftar perintah
 
 🚀 *SYSTEM (OWNER ONLY)*

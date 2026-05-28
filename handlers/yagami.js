@@ -1,26 +1,16 @@
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const config = require('../config');
 const { db } = require('../database/db');
 const log = require('../logger/debugLogger');
-
-/**
- * Membaca kredensial Yagami Cell dari berkas konfigurasi lingkungan (.env).
- */
-function getCredentials() {
-  const username = config.YAGAMI_USERNAME;
-  const token = config.YAGAMI_TOKEN;
-
-  if (!username || !token) {
-    throw new Error('Kredensial YAGAMI_USERNAME atau YAGAMI_TOKEN belum diatur di berkas .env!');
-  }
-
-  return {
-    auth_username: username,
-    auth_token: token
-  };
-}
+const {
+  pendingOrders,
+  normalizeYagamiPhone,
+  mapPaymentMethod,
+  getExternalPaymentLink,
+  getYagamiSaldo,
+  getYagamiProducts,
+  orderYagamiProduct,
+  getTransactionDetails,
+  isQrisPayment
+} = require('./yagamiApi');
 
 /**
  * Helper untuk mengirimkan balasan pesan WhatsApp dan mencatat ke database obrolan.
@@ -99,128 +89,12 @@ function formatPembayaranDetails(results) {
 }
 
 /**
- * Mengambil data rincian akun dan saldo Yagami Cell.
- */
-async function getYagamiSaldo() {
-  const credentials = getCredentials();
-  const params = new URLSearchParams();
-  params.append('auth_username', credentials.auth_username);
-  params.append('auth_token', credentials.auth_token);
-
-  log.debug('yagami', `Mengecek saldo Yagami Cell untuk user: ${credentials.auth_username}`);
-
-  const res = await axios.post('https://yagami-cell.com/api/main/account', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    timeout: 10000
-  });
-
-  log.debug('yagami_raw', `Raw Saldo Response:\n${JSON.stringify(res.data, null, 2)}`);
-
-  if (!res.data?.success) {
-    throw new Error(res.data?.message || res.data?.results || 'Gagal mengambil data saldo');
-  }
-
-  return res.data.results;
-}
-
-/**
- * Mengambil daftar produk (vouchers) dan memfilternya berdasarkan query string.
- */
-async function getYagamiProducts(filterStr = '') {
-  const credentials = getCredentials();
-  const params = new URLSearchParams();
-  params.append('auth_username', credentials.auth_username);
-  params.append('auth_token', credentials.auth_token);
-
-  log.debug('yagami', `Mengambil daftar voucher/produk Yagami Cell`);
-
-  const res = await axios.post('https://yagami-cell.com/api/main/get-vouchers', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    timeout: 15000
-  });
-
-  log.debug('yagami_raw', `Raw Vouchers Response (Sliced):\n${JSON.stringify(res.data, null, 2).slice(0, 500)}...`);
-
-  if (!res.data?.success) {
-    throw new Error(res.data?.message || res.data?.results || 'Gagal mengambil daftar produk');
-  }
-
-  let list = res.data.results || [];
-
-  if (filterStr) {
-    const query = filterStr.toLowerCase();
-    list = list.filter(item => {
-      const nominal = (item.nominal || '').toLowerCase();
-      const provider = (item.provider?.nama || '').toLowerCase();
-      const produkNama = (item.produk?.nama || '').toLowerCase();
-      return nominal.includes(query) || provider.includes(query) || produkNama.includes(query);
-    });
-  }
-
-  return list;
-}
-
-/**
- * Melakukan order produk Yagami Cell.
- */
-async function orderYagamiProduct(voucherId, phone, paymentMethod = 'balance') {
-  const credentials = getCredentials();
-  const params = new URLSearchParams();
-  params.append('auth_username', credentials.auth_username);
-  params.append('auth_token', credentials.auth_token);
-  params.append('voucher_id', voucherId);
-  params.append('phone', phone);
-  params.append('payment', paymentMethod);
-
-  log.debug('yagami', `Membuat pesanan Yagami Cell: Voucher ID ${voucherId} ke ${phone} via ${paymentMethod}`);
-
-  const res = await axios.post('https://yagami-cell.com/api/main/order', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    timeout: 15000
-  });
-
-  log.debug('yagami_raw', `Raw Order Response:\n${JSON.stringify(res.data, null, 2)}`);
-
-  if (!res.data?.success) {
-    throw new Error(res.data?.message || res.data?.results || 'Gagal membuat pesanan');
-  }
-
-  return res.data.results;
-}
-
-/**
- * Mengambil detail status transaksi berdasarkan ID Transaksi.
- */
-async function getTransactionDetails(trxId) {
-  const credentials = getCredentials();
-  const params = new URLSearchParams();
-  params.append('auth_username', credentials.auth_username);
-  params.append('auth_token', credentials.auth_token);
-  params.append('id', trxId);
-
-  log.debug('yagami', `Mengecek status transaksi ID: ${trxId}`);
-
-  const res = await axios.post('https://yagami-cell.com/api/main/transaction-details', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    timeout: 10000
-  });
-
-  log.debug('yagami_raw', `Raw Trx Details Response:\n${JSON.stringify(res.data, null, 2)}`);
-
-  if (!res.data?.success) {
-    throw new Error(res.data?.message || res.data?.results || 'Gagal mengambil detail transaksi');
-  }
-
-  return res.data.results;
-}
-
-/**
  * Melakukan polling status transaksi asinkron di latar belakang.
  */
 function startOrderPolling(sock, jid, msg, trxId, voucherName) {
   let pollCount = 0;
-  const maxPolls = 18; // 18 * 10 detik = 180 detik (3 menit)
-  const interval = 10000; // 10 detik
+  const maxPolls = 18; // 18 * 20 detik = 360 detik (6 menit)
+  const interval = 20000; // 20 detik
   let sentPaymentInstructions = false;
 
   log.debug('yagami', `Memulai background polling status untuk Transaksi ID: ${trxId}`);
@@ -239,8 +113,14 @@ function startOrderPolling(sock, jid, msg, trxId, voucherName) {
       // Kirim instruksi transfer hanya sekali jika pembayaran diperlukan
       if (statusPembayaran && statusPembayaran !== 'Sukses' && !sentPaymentInstructions) {
         sentPaymentInstructions = true;
-        const paymentText = formatPembayaranDetails(results);
+        let paymentText = formatPembayaranDetails(results);
         if (paymentText) {
+          if (isQrisPayment(results)) {
+            const externalLink = await getExternalPaymentLink(trxId);
+            if (externalLink) {
+              paymentText += `\n🔗 *Link Pembayaran:* \n${externalLink}\n`;
+            }
+          }
           let replyText = `⚠️ *PEMBAYARAN DIPERLUKAN*\n\n`;
           replyText += `Transaksi ID *#${trxId}* memerlukan pembayaran sebelum dapat diproses.\n\n`;
           replyText += paymentText;
@@ -278,7 +158,7 @@ function startOrderPolling(sock, jid, msg, trxId, voucherName) {
       } else {
         // Timeout polling
         let replyText = `⏳ *PEMBERITAHUAN (TIMEOUT)*\n\n`;
-        replyText += `Transaksi ID *#${trxId}* masih berstatus *Pending* setelah 3 menit.\n`;
+        replyText += `Transaksi ID *#${trxId}* masih berstatus *Pending* setelah 6 menit.\n`;
         replyText += `Silakan cek status transaksi secara manual nanti dengan mengetik:\n`;
         replyText += `*!yagami cek ${trxId}*`;
 
@@ -316,8 +196,12 @@ async function handleYagamiCommand(sock, jid, msg, args) {
     helpText += `🔹 *!yagami listproduk [filter]*\n`;
     helpText += `   _Melihat daftar produk (contoh: !yagami listproduk axis)_\n\n`;
     helpText += `🔹 *!yagami order [id_produk] [nohp] [pembayaran]*\n`;
-    helpText += `   _Melakukan pembelian produk (contoh: !yagami order 71 083812345678 bank_bca)_\n`;
-    helpText += `   _Default pembayaran: balance (saldo reseller)_\n\n`;
+    helpText += `   _Membuat draf pesanan (memerlukan konfirmasi)_\n`;
+    helpText += `   _Contoh: !yagami order 71 083812345678 bank_bca_\n\n`;
+    helpText += `🔹 *!yagami confirm*\n`;
+    helpText += `   _Mengonfirmasi pesanan yang sedang pending_\n\n`;
+    helpText += `🔹 *!yagami batal*\n`;
+    helpText += `   _Membatalkan pesanan yang sedang pending_\n\n`;
     helpText += `🔹 *!yagami cek [id_transaksi]*\n`;
     helpText += `   _Cek status transaksi secara manual_\n\n`;
     helpText += `━━━━━━━━━━━━━━━━━━━━━━`;
@@ -392,26 +276,99 @@ async function handleYagamiCommand(sock, jid, msg, args) {
     case 'order':
     case 'beli': {
       const voucherId = args[1];
-      const phone = args[2];
-      const paymentMethod = args[3] || 'balance';
+      const phoneInput = args[2];
+      const rawPayment = args.slice(3).join(' ') || 'balance';
+      const paymentMethod = mapPaymentMethod(rawPayment);
 
-      if (!voucherId || !phone) {
-        await reply(sock, jid, msg, '⚠️ *Format Salah!*\nGunakan: *!yagami order [id_produk] [nohp] [pembayaran]*\nContoh: *!yagami order 71 083812345678 bank_bca*');
+      if (!voucherId || !phoneInput) {
+        await reply(sock, jid, msg, '⚠️ *Format Salah!*\nGunakan: *!yagami order [id_produk] [nohp] [pembayaran]*\nContoh: *!yagami order 71 083812345678 qris_payment*');
         return;
       }
 
-      await reply(sock, jid, msg, `⏳ Membuat pesanan produk ID *${voucherId}* ke *${phone}* via *${paymentMethod}*...`);
+      const phone = normalizeYagamiPhone(phoneInput);
+      if (phone.length < 9) {
+        await reply(sock, jid, msg, '❌ *Nomor HP Tidak Valid!*\nNomor HP minimal terdiri dari 9 digit.');
+        return;
+      }
+
+      await reply(sock, jid, msg, `⏳ Memverifikasi produk ID *${voucherId}*...`);
       try {
-        const orderInfo = await orderYagamiProduct(voucherId, phone, paymentMethod);
+        const products = await getYagamiProducts();
+        const product = products.find(p => String(p.id) === String(voucherId));
+
+        if (!product) {
+          await reply(sock, jid, msg, `❌ *Produk Tidak Ditemukan!*\nProduk dengan ID *${voucherId}* tidak ditemukan di daftar Yagami Cell.`);
+          return;
+        }
+
+        const senderKey = msg.key.participant || msg.key.remoteJid || '';
+        const priceStr = product.harga_str || ('Rp ' + product.harga);
+        const providerName = product.provider?.nama || '-';
+
+        pendingOrders.set(senderKey, {
+          voucherId,
+          phone,
+          paymentMethod,
+          productName: product.nominal,
+          priceStr,
+          providerName,
+          timestamp: Date.now()
+        });
+
+        const paymentMethodFriendly = paymentMethod === 'balance' ? 'Reseller Balance (Saldo)' : (paymentMethod === 'qris_payment' ? 'QRIS' : (paymentMethod === 'qris_payment2' ? 'QRIS 2' : paymentMethod));
+
+        let text = `╔══════════════════════╗\n`;
+        text += `   ⚠️ *KONFIRMASI PESANAN*   \n`;
+        text += `╚══════════════════════╝\n\n`;
+        text += `Apakah Anda yakin ingin melakukan pembelian berikut?\n\n`;
+        text += `📦 *Produk:* ${product.nominal}\n`;
+        text += `🆔 *ID Produk:* ${product.id}\n`;
+        text += `🌐 *Provider:* ${providerName}\n`;
+        text += `📱 *No HP:* ${phone}\n`;
+        text += `💸 *Harga:* *${priceStr}*\n`;
+        text += `💳 *Metode:* ${paymentMethodFriendly}\n\n`;
+        text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+        text += `👉 Ketik *!yagami confirm* untuk memproses pesanan.\n`;
+        text += `👉 Ketik *!yagami batal* untuk membatalkan pesanan.\n\n`;
+        text += `⏳ _Batas waktu konfirmasi adalah 60 detik._`;
+
+        await reply(sock, jid, msg, text);
+      } catch (err) {
+        await reply(sock, jid, msg, `❌ *Gagal memverifikasi produk:* ${err.message}`);
+      }
+      break;
+    }
+
+    case 'confirm':
+    case 'konfirmasi': {
+      const senderKey = msg.key.participant || msg.key.remoteJid || '';
+      const pending = pendingOrders.get(senderKey);
+
+      if (!pending) {
+        await reply(sock, jid, msg, '⚠️ *Tidak Ada Pesanan Pending!*\nSilakan buat pesanan baru terlebih dahulu dengan perintah *!yagami order*.');
+        return;
+      }
+
+      if (Date.now() - pending.timestamp > 60000) {
+        pendingOrders.delete(senderKey);
+        await reply(sock, jid, msg, '⏳ *Pesanan Kedaluwarsa!*\nBatas waktu konfirmasi 60 detik telah habis. Silakan buat pesanan baru.');
+        return;
+      }
+
+      pendingOrders.delete(senderKey);
+
+      await reply(sock, jid, msg, `⏳ Memproses pesanan produk *${pending.productName}* ke *${pending.phone}* via *${pending.paymentMethod}*...`);
+      try {
+        const orderInfo = await orderYagamiProduct(pending.voucherId, pending.phone, pending.paymentMethod);
         const trxId = orderInfo.id;
-        const productName = orderInfo.voucher?.nominal || '';
+        const productName = orderInfo.voucher?.nominal || pending.productName;
 
         let text = `⏳ *PESANAN DIPROSES*\n\n`;
         text += `🆔 *ID Transaksi:* ${trxId}\n`;
         text += `📦 *Produk:* ${productName || '-'}\n`;
-        text += `📱 *No HP:* ${orderInfo.no_hp || phone}\n`;
+        text += `📱 *No HP:* ${orderInfo.no_hp || pending.phone}\n`;
         text += `💸 *Harga:* ${orderInfo.harga_str || ('Rp ' + orderInfo.harga)}\n`;
-        text += `💳 *Metode Pembayaran:* ${orderInfo.pembayaran || paymentMethod}\n\n`;
+        text += `💳 *Metode Pembayaran:* ${orderInfo.pembayaran || pending.paymentMethod}\n\n`;
         text += `🕒 Status transaksi sedang dilacak secara otomatis di latar belakang. Bot akan mengirimkan update dalam beberapa detik...`;
 
         await reply(sock, jid, msg, text);
@@ -422,6 +379,21 @@ async function handleYagamiCommand(sock, jid, msg, args) {
       } catch (err) {
         await reply(sock, jid, msg, `❌ *Gagal memproses pesanan:* ${err.message}`);
       }
+      break;
+    }
+
+    case 'batal':
+    case 'cancel': {
+      const senderKey = msg.key.participant || msg.key.remoteJid || '';
+      const pending = pendingOrders.get(senderKey);
+
+      if (!pending) {
+        await reply(sock, jid, msg, '⚠️ *Tidak Ada Pesanan Pending* untuk dibatalkan.');
+        return;
+      }
+
+      pendingOrders.delete(senderKey);
+      await reply(sock, jid, msg, `✅ *Pesanan Dibatalkan!*\nPembelian produk *${pending.productName}* ke *${pending.phone}* telah dibatalkan secara manual.`);
       break;
     }
 
@@ -455,8 +427,14 @@ async function handleYagamiCommand(sock, jid, msg, args) {
         text += `🔑 *SN / Token:* \`\`\`${sn}\`\`\`\n\n`;
         text += `_Waktu Transaksi: ${info.tanggal || '-'}_`;
 
-        const paymentText = formatPembayaranDetails(info);
+        let paymentText = formatPembayaranDetails(info);
         if (info.status?.pembayaran !== 'Sukses' && paymentText) {
+          if (isQrisPayment(info)) {
+            const externalLink = await getExternalPaymentLink(info.id || trxId);
+            if (externalLink) {
+              paymentText += `\n🔗 *Link Pembayaran:* \n${externalLink}\n`;
+            }
+          }
           text += `\n\n━━━━━━━━━━━━━━━━━━━━━━\n`;
           text += paymentText;
         }

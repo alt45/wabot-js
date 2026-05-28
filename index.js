@@ -32,6 +32,7 @@ const { handleStatus }   = require('./handlers/statusForwarder')
 const { getHelp }        = require('./handlers/help')
 const { getErpReport }   = require('./handlers/erpAmanda')
 const { handleYagamiCommand } = require('./handlers/yagami')
+const { handleZeroTierCommand } = require('./handlers/zerotier')
 const log                = require('./logger/debugLogger')
 
 const SESSION_DIR = path.join(__dirname, 'session')
@@ -320,6 +321,13 @@ async function startBot() {
           // ── Yagami Cell
           case 'yagami': {
             await handleYagamiCommand(sock, jid, msg, args)
+            break
+          }
+
+          // ── ZeroTier
+          case 'zt':
+          case 'zerotier': {
+            await handleZeroTierCommand(sock, jid, msg, args)
             break
           }
 

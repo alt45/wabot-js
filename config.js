@@ -12,5 +12,8 @@ module.exports = {
   API_TOKEN:       process.env.API_TOKEN      || 'my-secret-token-123',
   YAGAMI_USERNAME: process.env.YAGAMI_USERNAME || '',
   YAGAMI_TOKEN:    process.env.YAGAMI_TOKEN    || '',
+  YAGAMI_COOKIES:  process.env.YAGAMI_COOKIES  || '',
+  ZEROTIER_TOKEN:  (process.env.zerotier_token || '').trim(),
+  ZEROTIER_NETIDS: (process.env.netid || '').split(',').map(id => id.trim()).filter(id => id),
   DEBUG:           process.env.DEBUG === 'true',
 }
