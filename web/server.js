@@ -91,6 +91,15 @@ function createServer() {
         return sendJSON({ connected: _isConnected, uptime: Math.floor((Date.now() - _startTime)/1000), ram: (process.memoryUsage().heapUsed/1024/1024).toFixed(2), counts, qr_ready: fs.existsSync(QR_PATH) })
       }
       
+      if (url === '/api/chat' && method === 'GET') {
+        const queryJid = new URL(req.url, `http://${req.headers.host}`).searchParams.get('jid')
+        const allChats = db.table('chats').all()
+        if (queryJid) {
+          return sendJSON(allChats.filter(c => c.jid === queryJid))
+        }
+        return sendJSON(allChats)
+      }
+
       // ... API Data Management (tetap sama) ...
       if (url === '/api/data' && method === 'GET') {
         const type = new URL(req.url, `http://${req.headers.host}`).searchParams.get('type')
