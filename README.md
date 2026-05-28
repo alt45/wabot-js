@@ -35,12 +35,11 @@ Bot WhatsApp berbasis **Baileys** dan **JSON Database** yang dirancang untuk keb
 
 ## 📱 Command WhatsApp (Prefix: `!`)
 
-### ⏰ Reminder & Notes
-- `!remind 30m Makan` : Pasang pengingat (s/m/j).
-- `!reminders` : Lihat daftar pengingat aktif.
-- `!catat Judul | Isi` : Menyimpan catatan.
-- `!catatan` : Daftar semua catatan.
-- `!lihat <id>` : Membaca detail catatan.
+### 🌤️ Utilities
+- `!menu` / `!help` : Menampilkan daftar menu perintah aktif.
+- `!erp <username>` : Tarik data laporan absensi shifting ULP PLN ES secara dinamis berdasarkan tanggal berjalan (contoh: `!erp ULP.TEMANGGUNG`).
+- `!cuaca <kota>` : Info cuaca saat ini (contoh: `!cuaca Semarang`).
+- `!xl <nomor>` : Cek kuota XL / Axis (contoh: `!xl 08xxxxxxxxx`).
 
 ### 🚀 System (Owner Only)
 - `!status` : Cek uptime dan penggunaan RAM.

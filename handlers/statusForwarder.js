@@ -1,6 +1,7 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys')
 const { db }     = require('../database/db')
 const config = require('../config')
+const log    = require('../logger/debugLogger')
 
 const logStatus = db.prepare(`
   INSERT INTO status_log (sender, type, caption)
@@ -8,17 +9,17 @@ const logStatus = db.prepare(`
 `)
 
 async function handleStatus(sock, msg) {
-  if (!config.TARGET_GROUP_ID) return
+  const targetJids = config.TARGET_GROUP_ID
+  if (!targetJids || targetJids.length === 0) return
 
   try {
     const sender  = msg.key?.participant || msg.key?.remoteJid || 'unknown'
     const msgType = Object.keys(msg.message || {})[0]
+    log.debug('status', `Menerima status baru dari pengirim: ${sender}`)
 
     // Tipe yang didukung
     const supported = ['imageMessage', 'videoMessage', 'extendedTextMessage', 'conversation']
     if (!supported.includes(msgType)) return
-
-    const targetJid = config.TARGET_GROUP_ID
 
     // ── Teks / caption saja
     if (msgType === 'conversation' || msgType === 'extendedTextMessage') {
@@ -30,13 +31,15 @@ async function handleStatus(sock, msg) {
 
       const caption = `📢 *Status dari* @${sender.split('@')[0]}\n\n${text}`
 
-      await sock.sendMessage(targetJid, {
-        text:             caption,
-        mentions:         [sender],
-        contextInfo: {
-          mentionedJid: [sender]
-        }
-      })
+      for (const targetJid of targetJids) {
+        await sock.sendMessage(targetJid, {
+          text:             caption,
+          mentions:         [sender],
+          contextInfo: {
+            mentionedJid: [sender]
+          }
+        })
+      }
 
       logStatus.run(sender, 'text', text)
       return
@@ -47,26 +50,28 @@ async function handleStatus(sock, msg) {
     const caption = msg.message?.[msgType]?.caption || ''
     const label   = `📢 *Status dari* @${sender.split('@')[0]}${caption ? '\n\n' + caption : ''}`
 
-    if (msgType === 'imageMessage') {
-      await sock.sendMessage(targetJid, {
-        image:    buffer,
-        caption:  label,
-        mentions: [sender]
-      })
-      logStatus.run(sender, 'image', caption)
-    }
+    for (const targetJid of targetJids) {
+      if (msgType === 'imageMessage') {
+        await sock.sendMessage(targetJid, {
+          image:    buffer,
+          caption:  label,
+          mentions: [sender]
+        })
+      }
 
-    if (msgType === 'videoMessage') {
-      await sock.sendMessage(targetJid, {
-        video:    buffer,
-        caption:  label,
-        mentions: [sender]
-      })
-      logStatus.run(sender, 'video', caption)
+      if (msgType === 'videoMessage') {
+        await sock.sendMessage(targetJid, {
+          video:    buffer,
+          caption:  label,
+          mentions: [sender]
+        })
+      }
     }
-
+    
+    logStatus.run(sender, msgType === 'imageMessage' ? 'image' : 'video', caption)
+    log.success(`Berhasil meneruskan status (${msgType === 'imageMessage' ? 'Gambar' : 'Video'}) dari @${sender.split('@')[0]} ke ${targetJids.length} grup target.`)
   } catch (e) {
-    console.error('[StatusForwarder] Error:', e.message)
+    log.error('status', `Gagal meneruskan status dari @${sender.split('@')[0]}: ${e.message}`, e)
   }
 }
 

@@ -16,7 +16,7 @@ const fs         = require('fs')
 
 const config     = require('./config')
 const { db, JsonDB } = require('./database/db')
-const groupLogDB     = new JsonDB(path.join(__dirname, 'data', 'group_messages.json'))
+// Database groupLogDB telah disatukan ke db utama
 const groupNameCache = new Map()
 
 const { checkRateLimit }   = require('./middleware/rateLimit')
@@ -25,12 +25,13 @@ const { logActivity }      = require('./logger/activityLog')
 const { initScheduler }    = require('./scheduler/cronJobs')
 const { createServer, setConnected, setSocket } = require('./web/server')
 
-const { addReminder, listReminders } = require('./handlers/reminder')
-const { addNote, listNotes, getNote, deleteNote } = require('./handlers/notes')
+// Impor reminder dan notes telah dihapus
 const { getWeather }     = require('./handlers/weather')
 const { cekKuotaXL }     = require('./handlers/xlKuota')
 const { handleStatus }   = require('./handlers/statusForwarder')
 const { getHelp }        = require('./handlers/help')
+const { getErpReport }   = require('./handlers/erpAmanda')
+const log                = require('./logger/debugLogger')
 
 const SESSION_DIR = path.join(__dirname, 'session')
 const QR_PATH     = path.join(SESSION_DIR, 'qr.png')
@@ -68,13 +69,13 @@ async function startBot() {
         margin: 2
       })
       setConnected(false)
-      console.log(`📱 QR tersimpan. Buka: http://localhost:${config.WEB_PORT}`)
+      log.socket(`QR Code baru dibuat. Pindai di: http://localhost:${config.WEB_PORT}`)
     }
 
     if (connection === 'open') {
       setConnected(true)
       if (fs.existsSync(QR_PATH)) fs.unlinkSync(QR_PATH)
-      console.log('✅ Bot terhubung ke WhatsApp!')
+      log.success('Bot berhasil terhubung dan aktif di WhatsApp!')
     }
 
     if (connection === 'close') {
@@ -84,9 +85,9 @@ async function startBot() {
         : null
 
       if (code === DisconnectReason.loggedOut) {
-        console.log('🚪 Logged out. Hapus folder session/ lalu restart.')
+        log.error('SOCKET', 'Koneksi Logged Out! Silakan hapus folder session/ lalu restart bot.')
       } else {
-        console.log('🔄 Koneksi terputus, reconnect dalam 3 detik...')
+        log.warn('Koneksi terputus. Menghubungkan kembali dalam 3 detik...')
         setTimeout(startBot, 3000)
       }
     }
@@ -119,7 +120,7 @@ async function startBot() {
             groupName = 'Unknown Group'
           }
         }
-        console.log(`[DEBUG] Chat aktif di Grup: ${groupName} (${jid})`)
+        log.debug('group', `Chat aktif di Grup: ${groupName} (${jid})`)
       }
 
       // ── Status WA (stories) → forward ke grup target
@@ -135,10 +136,10 @@ async function startBot() {
         msg.message?.imageMessage?.caption ||
         msg.message?.videoMessage?.caption || ''
 
-      // Simpan ke history chat grup jika terdaftar di config
-      if (isGroup && config.TARGET_GROUP_ID.includes(jid)) {
-        // Ambil nama grup
-        let groupName = groupNameCache.get(jid)
+      // Ambil data pengirim & grup
+      let groupName = ''
+      if (isGroup) {
+        groupName = groupNameCache.get(jid)
         if (!groupName) {
           try {
             const metadata = await sock.groupMetadata(jid)
@@ -148,40 +149,52 @@ async function startBot() {
             groupName = 'Unknown Group'
           }
         }
+      }
 
-        // Simpan Teks/Caption
-        if (body) {
-          groupLogDB.table('chats').insert({ jid, groupName, message: body, sender, timestamp: new Date().toISOString() })
-        }
+      const senderName = msg.pushName || ''
 
-        // Tangani Gambar
-        const msgType = Object.keys(msg.message || {})[0]
-        if (msgType === 'imageMessage') {
-          try {
-            const buffer = await downloadMediaMessage(msg, 'buffer', {})
-            const safeGroupName = groupName.replace(/[\\/:*?"<>|]/g, '_')
-            const mediaDir = path.join(__dirname, 'data', 'media', safeGroupName)
-            
-            if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true })
-            
-            const fileName = `${Date.now()}.jpg`
-            const filePath = path.join(mediaDir, fileName)
-            
-            fs.writeFileSync(filePath, buffer)
-            
-            groupLogDB.table('chats').insert({ 
-              jid, 
-              groupName, 
-              message: `[Image: ${fileName}]`, 
-              sender, 
-              mediaPath: filePath,
-              timestamp: new Date().toISOString() 
-            })
-            
-            if (config.DEBUG) console.log(`[DEBUG] Gambar grup ${groupName} disimpan: ${filePath}`)
-          } catch (err) {
-            console.error(`[Error] Gagal simpan gambar grup ${groupName}:`, err.message)
-          }
+      // Simpan Teks/Caption ke database utama
+      if (body) {
+        db.table('chats').insert({ 
+          jid, 
+          groupName, 
+          sender, 
+          senderName, 
+          message: body, 
+          direction: 'in', 
+          timestamp: new Date().toISOString() 
+        })
+        log.debug('chat', `Teks masuk dari ${senderName || sender}${isGroup ? ` @ ${groupName}` : ''}: "${body}"`)
+      }
+
+      // Tangani Gambar untuk semua chat
+      const msgType = Object.keys(msg.message || {})[0]
+      if (msgType === 'imageMessage') {
+        try {
+          const buffer = await downloadMediaMessage(msg, 'buffer', {})
+          const mediaDir = path.join(__dirname, 'data', 'media')
+          
+          if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true })
+          
+          const fileName = `${Date.now()}.jpg`
+          const filePath = path.join(mediaDir, fileName)
+          
+          fs.writeFileSync(filePath, buffer)
+          
+          db.table('chats').insert({ 
+            jid, 
+            groupName, 
+            sender, 
+            senderName, 
+            message: `[Image: ${fileName}]`, 
+            mediaPath: filePath,
+            direction: 'in', 
+            timestamp: new Date().toISOString() 
+          })
+          
+          log.debug('media', `Gambar grup/pribadi disimpan di: ${filePath}`)
+        } catch (err) {
+          log.error('media', `Gagal mengunduh/menyimpan gambar:`, err)
         }
       }
 
@@ -203,6 +216,7 @@ async function startBot() {
 
       // Log aktivitas
       logActivity(jid, sender, command, body)
+      log.command(command, sender, body)
 
       // ── Command router ──────────────────────────────────
       try {
@@ -260,40 +274,7 @@ async function startBot() {
             break
           }
 
-          // ── Reminder
-          case 'remind':
-          case 'reminder': {
-            const text = addReminder(jid, sender, args)
-            await reply(sock, jid, msg, text)
-            break
-          }
-          case 'reminders': {
-            const text = listReminders(jid, sender)
-            await reply(sock, jid, msg, text)
-            break
-          }
-
-          // ── Notes
-          case 'catat': {
-            const text = addNote(jid, sender, args)
-            await reply(sock, jid, msg, text)
-            break
-          }
-          case 'catatan': {
-            const text = listNotes(jid, sender)
-            await reply(sock, jid, msg, text)
-            break
-          }
-          case 'lihat': {
-            const text = getNote(jid, sender, args)
-            await reply(sock, jid, msg, text)
-            break
-          }
-          case 'hapusnote': {
-            const text = deleteNote(jid, sender, args)
-            await reply(sock, jid, msg, text)
-            break
-          }
+          // Layanan pengingat dan catatan telah dihapus
 
           // ── Cuaca
           case 'cuaca':
@@ -317,6 +298,24 @@ async function startBot() {
             break
           }
 
+          // ── Cek Absensi ERP Amanda
+          case 'erp': {
+            if (!args[0]) {
+              await reply(sock, jid, msg, '⚠️ Format: *!erp [username_ulp]*\nContoh: *!erp ULP.TEMANGGUNG*')
+              break
+            }
+            await reply(sock, jid, msg, '⏳ Menghubungi Portal PLN ES, mohon tunggu...')
+            try {
+              const reports = await getErpReport(args[0])
+              for (const r of reports) {
+                await reply(sock, jid, msg, r)
+              }
+            } catch (e) {
+              await reply(sock, jid, msg, `❌ Gagal mengambil data ERP: ${e.message}`)
+            }
+            break
+          }
+
           // ── Help
           case 'help':
           case 'menu': {
@@ -329,7 +328,7 @@ async function startBot() {
             break
         }
       } catch (e) {
-        console.error(`[Command:${command}] Error:`, e.message)
+        log.error('command:' + command, `Error saat memproses perintah: ${e.message}`, e)
         await reply(sock, jid, msg, `❌ Error: ${e.message}`)
       }
     }
@@ -350,4 +349,4 @@ async function reply(sock, jid, msg, text) {
   })
 }
 
-startBot().catch(console.error)
+startBot().catch(err => log.error('bot', 'Gagal menjalankan startBot:', err))

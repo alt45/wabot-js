@@ -3,3 +3,4 @@ session/
 data/
 .env
 *.log
+TMP_UPDATE/

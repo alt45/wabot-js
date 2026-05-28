@@ -1,5 +1,6 @@
 const axios  = require('axios')
 const config = require('../config')
+const log    = require('../logger/debugLogger')
 
 const EMOJI_MAP = {
   Thunderstorm: '⛈️', Drizzle: '🌦️', Rain: '🌧️',
@@ -15,6 +16,7 @@ async function getWeather(args) {
   }
 
   try {
+    log.debug('weather', `Memulai pengambilan data cuaca untuk kota: ${city}`)
     const res = await axios.get('https://api.openweathermap.org/data/2.5/weather', {
       params: {
         q:     city,
@@ -26,6 +28,7 @@ async function getWeather(args) {
     })
 
     const d        = res.data
+    log.debug('weather_raw', `Raw API Response:\n${JSON.stringify(d, null, 2)}`)
     const name     = d.name
     const country  = d.sys?.country
     const temp     = Math.round(d.main?.temp)
@@ -46,6 +49,7 @@ async function getWeather(args) {
 _Data dari OpenWeatherMap_`
 
   } catch (e) {
+    log.error('weather', `Gagal mengambil data cuaca kota ${city}: ${e.message}`, e)
     if (e.response?.status === 404) {
       return `❌ Kota *${city}* tidak ditemukan.`
     }
