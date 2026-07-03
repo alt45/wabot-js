@@ -12,6 +12,7 @@ function getHelp() {
   ${p}xl <nomor> → cek kuota XL/Axis
   ${p}yagami → menu transaksi Yagami Cell
   ${p}zt [pln/lokal/all] → cek host aktif ZeroTier (default: pln)
+  ${p}trafik → cek penggunaan data server
   ${p}menu / ${p}help → daftar perintah
 
 🚀 *SYSTEM (OWNER ONLY)*

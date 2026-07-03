@@ -33,6 +33,9 @@ const { getHelp }        = require('./handlers/help')
 const { getErpReport }   = require('./handlers/erpAmanda')
 const { handleYagamiCommand } = require('./handlers/yagami')
 const { handleZeroTierCommand } = require('./handlers/zerotier')
+const { getTraffic } = require('./handlers/traffic')
+const { getXrayStats } = require('./handlers/xray')
+const { getXrayIPs } = require('./handlers/xrayIp')
 const log                = require('./logger/debugLogger')
 
 const SESSION_DIR = path.join(__dirname, 'session')
@@ -328,6 +331,29 @@ async function startBot() {
           case 'zt':
           case 'zerotier': {
             await handleZeroTierCommand(sock, jid, msg, args)
+            break
+          }
+
+          // ── Traffic
+          case 'traffic':
+          case 'trafik': {
+            await reply(sock, jid, msg, await getTraffic())
+            break
+          }
+
+          // ── Xray
+          case 'xr':
+          case 'xray': {
+            if (args[0] === 'ip') {
+              await reply(sock, jid, msg, '⏳ Mengecek log IP Xray terbaru...')
+              const { getXrayIPs } = require('./handlers/xrayIp')
+              const textIp = await getXrayIPs()
+              await reply(sock, jid, msg, textIp)
+              break
+            }
+            await reply(sock, jid, msg, '⏳ Mengambil data statistik Xray...')
+            const text = await getXrayStats()
+            await reply(sock, jid, msg, text)
             break
           }
 
