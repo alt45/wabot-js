@@ -43,18 +43,44 @@ function mapPaymentMethod(input) {
 }
 
 /**
- * Mengambil link pembayaran eksternal dari riwayat transaksi Yagami Cell menggunakan session cookie dari berkas .env.
+ * Membaca cookie dari file data/yagami.json dan mengubahnya ke string format header Cookie.
+ */
+function getCookiesFromFile() {
+  try {
+    const filePath = path.join(__dirname, '..', 'data', 'yagami.json');
+    if (!fs.existsSync(filePath)) {
+      log.debug('yagami_cookies', `File cookie tidak ditemukan di ${filePath}`);
+      return null;
+    }
+    const rawData = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(rawData);
+    if (!data.cookies || !Array.isArray(data.cookies)) {
+      log.debug('yagami_cookies', 'Format file yagami.json tidak valid (tidak ada array cookies)');
+      return null;
+    }
+    const cookieString = data.cookies
+      .map(c => `${c.name}=${c.value}`)
+      .join('; ');
+    return cookieString;
+  } catch (err) {
+    log.error('yagami_cookies', `Gagal membaca cookie dari file JSON: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Mengambil link pembayaran eksternal dari riwayat transaksi Yagami Cell menggunakan session cookie dari berkas data/yagami.json atau fallback ke .env.
  */
 async function getExternalPaymentLink(trxId) {
   try {
-    const cookieHeader = config.YAGAMI_COOKIES;
+    const cookieHeader = getCookiesFromFile() || config.YAGAMI_COOKIES;
     if (!cookieHeader) {
-      log.debug('yagami_scrape', 'YAGAMI_COOKIES belum diatur di berkas .env!');
+      log.debug('yagami_scrape', 'Cookie Yagami tidak ditemukan di data/yagami.json maupun .env!');
       return null;
     }
 
     const url = `https://yagami-cell.com/akun/riwayat-transaksi/view/${trxId}`;
-    log.debug('yagami_scrape', `Melakukan scraping link bayar eksternal untuk TRX #${trxId} menggunakan YAGAMI_COOKIES dari .env`);
+    log.debug('yagami_scrape', `Melakukan scraping link bayar eksternal untuk TRX #${trxId} menggunakan cookie`);
 
     const res = await axios.get(url, {
       headers: {
