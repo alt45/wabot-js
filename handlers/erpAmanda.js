@@ -3,11 +3,21 @@ const fs = require('fs')
 const path = require('path')
 const https = require('https')
 const log = require('../logger/debugLogger')
+const { SocksProxyAgent } = require('socks-proxy-agent')
+const config = require('../config')
 
-// Buat agent HTTPS untuk mengabaikan peringatan SSL (Insecure)
-const agent = new https.Agent({  
+const agentOptions = {  
   rejectUnauthorized: false
-})
+}
+
+// Gunakan SocksProxyAgent jika ERP_PROXY diatur, jika tidak gunakan https.Agent biasa
+const agent = config.ERP_PROXY
+  ? new SocksProxyAgent(config.ERP_PROXY, agentOptions)
+  : new https.Agent(agentOptions)
+
+if (config.ERP_PROXY) {
+  log.debug('erp', `Menggunakan SOCKS Proxy untuk koneksi ERP: ${config.ERP_PROXY}`)
+}
 
 const CONFIG = {
   USER_ID: '8425214MGG',

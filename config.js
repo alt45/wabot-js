@@ -16,4 +16,5 @@ module.exports = {
   ZEROTIER_TOKEN:  (process.env.zerotier_token || '').trim(),
   ZEROTIER_NETIDS: (process.env.netid || '').split(',').map(id => id.trim()).filter(id => id),
   DEBUG:           process.env.DEBUG === 'true',
+  ERP_PROXY:       process.env.ERP_PROXY      || '',
 }
